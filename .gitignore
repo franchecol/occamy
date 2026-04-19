@@ -14,3 +14,11 @@ modelsim.ini
 transcript
 
 gmon.out
+
+# Local simulation artifacts
+/target/sim/work-vlt/
+/target/sim/trace_hart_*.dasm
+/target/sim/uart0.log
+/target/sim/logs/trace_hart_*.dasm
+/target/sim/sw/device/apps/*/build/
+/target/sim/sw/host/apps/*/build/

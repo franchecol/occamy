@@ -139,6 +139,8 @@ VLT_COBJ += $(VLT_BUILDDIR)/test/bootdata.o
 VLT_COBJ += $(VLT_BUILDDIR)/vlt/verilated.o
 VLT_COBJ += $(VLT_BUILDDIR)/vlt/verilated_dpi.o
 VLT_COBJ += $(VLT_BUILDDIR)/vlt/verilated_vcd_c.o
+VLT_COBJ += $(VLT_BUILDDIR)/vlt/verilated_timing.o
+VLT_COBJ += $(VLT_BUILDDIR)/vlt/verilated_threads.o
 
 #################
 # Prerequisites #
