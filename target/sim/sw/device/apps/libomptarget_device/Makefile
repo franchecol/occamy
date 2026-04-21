@@ -12,6 +12,8 @@ APP     ?= omptarget_device
 SRCS    ?= $(SRC_DIR)/main.c $(SRC_DIR)/sw_mailbox.c
 INCDIRS += $(SRC_DIR)
 
+.DEFAULT_GOAL := all
+
 .PHONY: clean
 clean:
 
