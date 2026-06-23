@@ -104,10 +104,43 @@ VLOG_FLAGS += -timescale 1ns/1ps
 
 # Verilated and compiled Occamy system
 VLT_AR     = ${VLT_BUILDDIR}/Vtestharness__ALL.a
+VLT_JOBS  ?= 1
+VLT_TRACE ?= 0
+VLT_PROF  ?= 0
+VLT_OUTPUT_SPLIT        ?= 5000
+VLT_OUTPUT_SPLIT_CFUNCS ?= 5000
 
 VLT_FLAGS += -Wno-SYMRSVDWORD -Wno-BLKLOOPINIT
+ifneq ($(VLT_OUTPUT_SPLIT),0)
+VLT_FLAGS += --output-split $(VLT_OUTPUT_SPLIT)
+endif
+ifneq ($(VLT_OUTPUT_SPLIT_CFUNCS),0)
+VLT_FLAGS += --output-split-cfuncs $(VLT_OUTPUT_SPLIT_CFUNCS)
+endif
+ifeq ($(VLT_TRACE),1)
 VLT_FLAGS += --trace       # Enable VCD dumping
+endif
+ifeq ($(VLT_PROF),1)
 VLT_FLAGS += --prof-cfuncs # Enable code profiling
+endif
+
+VLT_VERSION       := $(shell $(firstword $(VLT)) --version | head -n 1)
+VLT_BUILD_CONFIG  := $(VLT_VERSION)|trace=$(VLT_TRACE)|prof=$(VLT_PROF)|split=$(VLT_OUTPUT_SPLIT)|split_cfuncs=$(VLT_OUTPUT_SPLIT_CFUNCS)|flags=$(VLT_FLAGS)
+VLT_BUILD_ID      := $(shell printf '%s' '$(VLT_BUILD_CONFIG)' | cksum | awk '{print $$1}')
+VLT_VERSION_STAMP = $(VLT_BUILDDIR)/.verilator-$(VLT_BUILD_ID)
+
+# The included Snitch common.mk uses all host CPUs.  Verilator 5.048 can race
+# while creating its precompiled headers, so keep build parallelism explicit.
+define VERILATE
+	mkdir -p $(dir $@)
+	$(BENDER) script verilator ${VLT_BENDER} > $(dir $@)files
+	ln -sf V$(1)__pch.h $(dir $@)V$(1)__pch.h.fast
+	ln -sf V$(1)__pch.h $(dir $@)V$(1)__pch.h.slow
+	$(VLT) \
+		--Mdir $(dir $@) -f $(dir $@)files $(VLT_FLAGS) \
+		-j $(VLT_JOBS) --cc --build --top-module $(1)
+	touch $@
+endef
 
 ###############
 # C testbench #
@@ -490,8 +523,19 @@ $(CVA6_DIFF_TRACE): $(CVA6_TXT_TRACE) $(ANNOTATE_PY)
 # Verilator #
 #############
 
-${VLT_AR}: ${VLT_SOURCES} ${TB_SRCS}
+$(VLT_VERSION_STAMP):
+	@if [ -d "$(VLT_BUILDDIR)" ]; then \
+		echo "[VLT] Verilator version changed or build version is unknown; cleaning $(VLT_BUILDDIR)"; \
+		rm -rf "$(VLT_BUILDDIR)"; \
+		rm -f "$(BIN_DIR)/occamy_top.vlt"; \
+	fi
+	@mkdir -p "$(VLT_BUILDDIR)"
+	@printf '%s\n' "$(VLT_BUILD_CONFIG)" > "$@"
+
+${VLT_AR}: ${VLT_SOURCES} ${TB_SRCS} $(VLT_VERSION_STAMP)
 	$(call VERILATE,testharness)
+
+$(VLT_COBJ): | $(VLT_VERSION_STAMP)
 
 # Quick sanity check, not really meant for simulation.
 verilate: ${VLT_AR}
